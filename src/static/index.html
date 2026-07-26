@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Скачивание</title>
+<style>
+  body { font-family: sans-serif; max-width: 600px; margin: 40px auto; }
+  nav a { margin-right: 16px; }
+  button { padding: 8px 16px; font-size: 16px; }
+</style>
+</head>
+<body>
+<nav><a href="/">Скачивание</a> <a href="/files.html">Файлы и расчёты</a></nav>
+<h1>Скачивание каталога</h1>
+<button id="start-btn">Скачать данные</button>
+
+<div id="progress" hidden>
+  <p>Старт (НСК): <span id="started-at">—</span></p>
+  <p>Статус: <span id="status">—</span></p>
+  <p>Получено названий: <span id="total-seen">0</span>, скачано: <span id="downloaded">0</span></p>
+</div>
+
+<script>
+const startBtn = document.getElementById("start-btn");
+const progress = document.getElementById("progress");
+
+function formatNsk(iso) {
+  if (!iso) return "—";
+  return new Intl.DateTimeFormat("ru-RU", { timeZone: "Asia/Novosibirsk", dateStyle: "medium", timeStyle: "medium" }).format(new Date(iso));
+}
+
+async function poll() {
+  const data = await (await fetch("/api/download/status")).json();
+  progress.hidden = false;
+  document.getElementById("started-at").textContent = formatNsk(data.started_at);
+  document.getElementById("status").textContent = data.status;
+  document.getElementById("total-seen").textContent = data.total_seen;
+  document.getElementById("downloaded").textContent = data.downloaded;
+
+  if (data.status === "running") {
+    setTimeout(poll, 1000);
+  } else {
+    startBtn.disabled = false;
+  }
+}
+
+startBtn.addEventListener("click", async () => {
+  startBtn.disabled = true;
+  const res = await fetch("/api/download/start", { method: "POST" });
+  if (!res.ok) { startBtn.disabled = false; alert("Ошибка: " + res.status); return; }
+  poll();
+});
+
+poll();
+</script>
+</body>
+</html>
